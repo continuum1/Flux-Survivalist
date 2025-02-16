@@ -1,0 +1,1 @@
+/home/jackm/Documents/Coding\ fun/VSC\ Projects\ -\ Rust/Flux\ Survivalist/Flux_Survivalist/target/debug/Flux_Survivalist: /home/jackm/Documents/Coding\ fun/VSC\ Projects\ -\ Rust/Flux\ Survivalist/Flux_Survivalist/src/main.rs
