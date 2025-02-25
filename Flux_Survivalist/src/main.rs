@@ -1,5 +1,5 @@
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode}, execute, terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen}
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode}, execute, terminal::{disable_raw_mode, enable_raw_mode, Clear, EnterAlternateScreen, LeaveAlternateScreen}
 };
 
 use std::{error::Error, io, time::{Duration, Instant}};
@@ -9,7 +9,7 @@ use tui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Span, Spans},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Paragraph, Tabs},
     Frame, Terminal,
 };
 
@@ -30,20 +30,41 @@ impl Item {
     }
 }
 
-struct App {
+struct App<'a> {
+    pub titles: Vec<&'a str>,
+    cur_tab: usize,
     scroll: u8,
     inventory: Vec<(Item, u8)>,
 }
 
-impl App {
-    fn new() -> App {
+impl<'a> App<'a> {
+    fn new() -> App<'a> {
         App {
+            titles: vec![
+                "Tab1",
+                "Tab2",
+                "Tab3",
+                "Tab4",
+            ],
+            cur_tab: 0,
             scroll: 0,
             inventory: vec![
                 (Item::Wood, 10),
                 (Item::Fibre, 3),
                 (Item::Water, 13)
             ],
+        }
+    }
+
+    fn next(&mut self) {
+        self.cur_tab = (self.cur_tab + 1) % self.titles.len()
+    }
+
+    fn previous(&mut self) {
+        if self.cur_tab > 0 {
+            self.cur_tab -= 1;
+        } else {
+            self.cur_tab = self.titles.len() - 1;
         }
     }
 
@@ -100,8 +121,11 @@ fn run_app<B: Backend>(
 
         if crossterm::event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
-                if let KeyCode::Char('q') = key.code {
-                    return Ok(());
+                match key.code {
+                    KeyCode::Char('q') => return Ok(()),
+                    KeyCode::Right => app.next(),
+                    KeyCode::Left => app.previous(),
+                    _ => {},
                 }
             }
         }
@@ -114,6 +138,48 @@ fn run_app<B: Backend>(
 }
 
 fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
+    let size = f.size();
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(3), Constraint::Min(0)].as_ref())
+        .split(size);
+
+    let block = Block::default().style(Style::default().bg(Color::White).fg(Color::Black));
+    f.render_widget(block, size);
+    
+    let titles = app
+        .titles
+        .iter()
+        .map(|t| {
+            let (first, rest) = t.split_at(1);
+            Spans::from(vec![
+                Span::styled(first, Style::default().fg(Color::Yellow)),
+                Span::styled(rest, Style::default().fg(Color::Green)),
+            ])
+        })
+        .collect();
+    let tabs = Tabs::new(titles)
+        .block(Block::default().borders(Borders::ALL).title("Tabs"))
+        .select(app.cur_tab)
+        .style(Style::default().fg(Color::Cyan))
+        .highlight_style(
+            Style::default()
+                .add_modifier(Modifier::BOLD)
+                .bg(Color::Black),
+        );
+    f.render_widget(tabs, chunks[0]);
+    let inner = match app.cur_tab {
+        0 => Block::default().title("Inner 0").borders(Borders::ALL),
+        1 => Block::default().title("Inner 1").borders(Borders::ALL),
+        2 => Block::default().title("Inner 2").borders(Borders::ALL),
+        3 => Block::default().title("Inner 3").borders(Borders::ALL),
+        _ => unreachable!(),
+    };
+    f.render_widget(inner, chunks[1]);
+}
+
+/*
+fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(80), Constraint::Percentage(20)].as_ref())
@@ -122,6 +188,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
     render_inventory(f, &app.inventory, chunks[1]);
 
 }
+*/
 
 fn render_inventory<'a, B: Backend>(f: &mut Frame<B>, inv: &Vec<(Item, u8)>, chunk: Rect) {
     let create_block = |title| {
