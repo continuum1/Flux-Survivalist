@@ -9,10 +9,11 @@ use tui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Span, Spans},
-    widgets::{Block, Borders, Paragraph, Wrap},
+    widgets::{Block, Borders, Paragraph},
     Frame, Terminal,
 };
 
+#[derive(Copy, Clone)]
 enum Item {
     Wood,
     Fibre,
@@ -136,20 +137,7 @@ fn render_inventory<'a, B: Backend>(f: &mut Frame<B>, inv: &Vec<(Item, u8)>, chu
     let mut text = vec![];
 
     for i in 0..inv.len() {
-        text.push(
-            Spans::from(vec![
-                    Span::styled(inv[i].0.as_str(),
-                    Style::default()
-                        .add_modifier(Modifier::UNDERLINED)
-                    ),
-                    Span::raw("     "),
-                    Span::styled(inv[i].1.to_string() + "/256", Style::default()
-                        .add_modifier(Modifier::ITALIC)
-                    ),
-                    Span::raw("\n"),
-                ]
-            )
-        );
+        text.push(write_inv_item(inv[i]));
     }
 
     let paragraph = Paragraph::new(text)
@@ -158,4 +146,19 @@ fn render_inventory<'a, B: Backend>(f: &mut Frame<B>, inv: &Vec<(Item, u8)>, chu
         .alignment(Alignment::Right);
 
     f.render_widget(paragraph, chunk);
+}
+
+fn write_inv_item<'a>(item: (Item, u8)) -> Spans<'a> {
+    return Spans::from(vec![
+            Span::styled(item.0.as_str(),
+            Style::default()
+                .add_modifier(Modifier::UNDERLINED)
+            ),
+            Span::raw("     "),
+            Span::styled(item.1.to_string() + "/256", Style::default()
+                .add_modifier(Modifier::ITALIC)
+            ),
+            Span::raw("\n"),
+        ]
+    );
 }
