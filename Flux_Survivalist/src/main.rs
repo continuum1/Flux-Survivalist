@@ -2,7 +2,7 @@ use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode}, execute, terminal::{disable_raw_mode, enable_raw_mode, Clear, EnterAlternateScreen, LeaveAlternateScreen}
 };
 
-use std::{error::Error, io, time::{Duration, Instant}};
+use std::{error::Error, io, rc::Rc, time::{Duration, Instant}};
 
 use tui::{
     backend::{Backend, CrosstermBackend},
@@ -11,6 +11,10 @@ use tui::{
     text::{Span, Spans},
     widgets::{Block, Borders, Paragraph, Tabs},
     Frame, Terminal,
+};
+
+use tree_ds::prelude::{
+
 };
 
 #[derive(Copy, Clone)]
@@ -74,6 +78,11 @@ impl<'a> App<'a> {
     }
 }
 
+struct Page<'a, B: Backend> {
+    pub title: &'a str,
+    render: dyn Fn(&mut Frame<B>, &App, Rect),
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -102,6 +111,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     Ok(())
+}
+
+fn build_inv_page() {
+    //let mut inv_page: Tree<>
 }
 
 fn run_app<B: Backend>(
@@ -146,7 +159,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
 
     let block = Block::default().style(Style::default().bg(Color::White).fg(Color::Black));
     f.render_widget(block, size);
-    
+
     let titles = app
         .titles
         .iter()
@@ -190,21 +203,21 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
 }
 */
 
-fn render_inventory<'a, B: Backend>(f: &mut Frame<B>, inv: &Vec<(Item, u8)>, chunk: Rect) {
-    let create_block = |title| {
-        Block::default()
-            .borders(Borders::ALL)
-            .style(Style::default().bg(Color::White).fg(Color::Black))
-            .title(Span::styled(
-                title,
-                Style::default().add_modifier(Modifier::BOLD),
-            ))
-    };
+fn create_block<'b>(title: &'b str) -> Block<'b> {
+    Block::default()
+        .borders(Borders::ALL)
+        .style(Style::default().bg(Color::White).fg(Color::Black))
+        .title(Span::styled(
+            title,
+            Style::default().add_modifier(Modifier::BOLD),
+        ))
+}
 
+fn render_inventory<'a, 'b, B: Backend>(f: &mut Frame<B>, app: &App, chunk: Rect) {
     let mut text = vec![];
 
-    for i in 0..inv.len() {
-        text.push(write_inv_item(inv[i]));
+    for i in 0..app.inventory.len() {
+        text.push(write_inv_item(app.inventory[i]));
     }
 
     let paragraph = Paragraph::new(text)
