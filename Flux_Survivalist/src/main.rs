@@ -34,29 +34,39 @@ impl Item {
     }
 }
 
-struct App<'a> {
-    pub titles: Vec<&'a str>,
-    cur_tab: usize,
-    scroll: u8,
+struct AppData {
     inventory: Vec<(Item, u8)>,
 }
 
-impl<'a> App<'a> {
-    fn new() -> App<'a> {
-        App {
-            titles: vec![
-                "Tab1",
-                "Tab2",
-                "Tab3",
-                "Tab4",
-            ],
-            cur_tab: 0,
-            scroll: 0,
+impl AppData {
+    fn new() -> AppData {
+        AppData {
             inventory: vec![
                 (Item::Wood, 10),
                 (Item::Fibre, 3),
                 (Item::Water, 13)
             ],
+        }
+    }
+}
+
+struct Frontend<'a> {
+    pub titles: Vec<&'a str>,
+    cur_tab: usize,
+    scroll: u8,
+}
+
+impl<'a> Frontend<'a> {
+    fn new() -> Frontend<'a> {
+        Frontend {
+            titles: vec![
+                "Dialog page",
+                "Inventory",
+                "Crafting",
+                "Log",
+            ],
+            cur_tab: 0,
+            scroll: 0,
         }
     }
 
@@ -80,7 +90,7 @@ impl<'a> App<'a> {
 
 struct Page<'a, B: Backend> {
     pub title: &'a str,
-    render: dyn Fn(&mut Frame<B>, &App, Rect),
+    render: dyn Fn(&mut Frame<B>, &Frontend, &AppData, Rect),
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -92,8 +102,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // create app and run it
     let tick_rate = Duration::from_millis(250);
-    let app = App::new();
-    let res = run_app(&mut terminal, app, tick_rate);
+    let frontend = Frontend::new();
+    let appdata = AppData::new();
+    let res = run_app(&mut terminal, frontend, appdata, tick_rate);
 
     // restore terminal
     disable_raw_mode()?;
@@ -119,14 +130,15 @@ fn build_inv_page() {
 
 fn run_app<B: Backend>(
         terminal: &mut Terminal<B>,
-        mut app: App,
+        mut frontend: Frontend,
+        mut appdata: AppData,
         tick_rate: Duration
     ) -> io::Result<()> {
     
     let mut last_tick = Instant::now();
 
     loop {
-        terminal.draw(|f| ui(f, &app))?;
+        terminal.draw(|f| ui(f, &frontend, &appdata))?;
 
         let timeout = tick_rate
             .checked_sub(last_tick.elapsed())
@@ -136,8 +148,8 @@ fn run_app<B: Backend>(
             if let Event::Key(key) = event::read()? {
                 match key.code {
                     KeyCode::Char('q') => return Ok(()),
-                    KeyCode::Right => app.next(),
-                    KeyCode::Left => app.previous(),
+                    KeyCode::Right => frontend.next(),
+                    KeyCode::Left => frontend.previous(),
                     _ => {},
                 }
             }
@@ -145,12 +157,12 @@ fn run_app<B: Backend>(
 
         if last_tick.elapsed() >= tick_rate {
             last_tick = Instant::now();
-            app.on_tick();
+            frontend.on_tick();
         }
     }
 }
 
-fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
+fn ui<B: Backend>(f: &mut Frame<B>, frontend: &Frontend, appdata: &AppData) {
     let size = f.size();
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -160,7 +172,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
     let block = Block::default().style(Style::default().bg(Color::White).fg(Color::Black));
     f.render_widget(block, size);
 
-    let titles = app
+    let titles = frontend
         .titles
         .iter()
         .map(|t| {
@@ -171,17 +183,20 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
             ])
         })
         .collect();
+    
     let tabs = Tabs::new(titles)
         .block(Block::default().borders(Borders::ALL).title("Tabs"))
-        .select(app.cur_tab)
+        .select(frontend.cur_tab)
         .style(Style::default().fg(Color::Cyan))
         .highlight_style(
             Style::default()
                 .add_modifier(Modifier::BOLD)
                 .bg(Color::Black),
         );
+
     f.render_widget(tabs, chunks[0]);
-    let inner = match app.cur_tab {
+    
+    let inner = match frontend.cur_tab {
         0 => Block::default().title("Inner 0").borders(Borders::ALL),
         1 => Block::default().title("Inner 1").borders(Borders::ALL),
         2 => Block::default().title("Inner 2").borders(Borders::ALL),
@@ -190,18 +205,6 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
     };
     f.render_widget(inner, chunks[1]);
 }
-
-/*
-fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(80), Constraint::Percentage(20)].as_ref())
-        .split(f.size());
-
-    render_inventory(f, &app.inventory, chunks[1]);
-
-}
-*/
 
 fn create_block<'b>(title: &'b str) -> Block<'b> {
     Block::default()
@@ -213,11 +216,11 @@ fn create_block<'b>(title: &'b str) -> Block<'b> {
         ))
 }
 
-fn render_inventory<'a, 'b, B: Backend>(f: &mut Frame<B>, app: &App, chunk: Rect) {
+fn render_inventory<'a, 'b, B: Backend>(f: &mut Frame<B>, frontend: &Frontend, appdata: &AppData, chunk: Rect) {
     let mut text = vec![];
 
-    for i in 0..app.inventory.len() {
-        text.push(write_inv_item(app.inventory[i]));
+    for i in 0..appdata.inventory.len() {
+        text.push(write_inv_item(appdata.inventory[i]));
     }
 
     let paragraph = Paragraph::new(text)
