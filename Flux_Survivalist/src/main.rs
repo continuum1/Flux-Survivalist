@@ -14,7 +14,8 @@ use tui::{
 };
 
 use tree_ds::prelude::{
-
+    Tree,
+    Node,
 };
 
 #[derive(Copy, Clone)]
@@ -89,6 +90,7 @@ impl<'a> Frontend<'a> {
 }
 
 struct Page<'a, B: Backend> {
+    f: Frame<'a, B>,
     pub title: &'a str,
     render: dyn Fn(&mut Frame<B>, &Frontend, &AppData, Rect),
 }
@@ -124,8 +126,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn build_inv_page() {
-    //let mut inv_page: Tree<>
+fn build_inv_page<'a, B: Backend> (f: Frame<B>) -> Tree<i32, Page<'a, B>> {
+    let mut tree: Tree<i32, Page<'a, B>> = Tree::new(Some("Inventory"));
 }
 
 fn run_app<B: Backend>(

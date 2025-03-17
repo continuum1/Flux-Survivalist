@@ -5,5 +5,5 @@ edition = "2021"
 
 [dependencies]
 crossterm = "0.28.1"
-tree-ds = "0.1.6"
+tree-ds = { version = "0.1.6", features = ["auto_id"] }
 tui = "0.19.0"

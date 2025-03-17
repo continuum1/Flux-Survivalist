@@ -1,0 +1,1 @@
+(dyn for<'a, 'b, 'c, 'd, 'e> Fn(&'a mut Frame<'b, B>, &'c Frontend<'d>, &'e AppData, Rect) + 'static)
